@@ -16,7 +16,7 @@ import joblib
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 MODEL_DIR = BASE_DIR / "src" / "models"
-DATA_PATH = BASE_DIR / "data" / "final" / "dataset_final_eda_municipio_semana.csv"
+DATA_PATH = BASE_DIR / "data" / "final" / "dataset_final_municipio_semana.csv"
 OUTPUT_CSV = BASE_DIR / "data" / "final" / "predicciones_proximas.csv"
 
 MUNICIPIOS = {

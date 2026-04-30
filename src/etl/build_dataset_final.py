@@ -18,6 +18,28 @@ TARGET_CODES = {
     "52885": "YACUANQUER",
 }
 
+EVENTO_ORIGEN = {
+    "EDA": "MORBILIDAD POR EDA",
+    "IRA": "MORBILIDAD POR IRA",
+}
+
+
+def build_grid(eventos, years, weeks):
+    """Construye el grid completo municipio × año × semana × evento."""
+    frames = []
+    for evento in eventos:
+        g = pd.MultiIndex.from_product(
+            [list(TARGET_CODES.keys()), years, weeks],
+            names=["cod_divipola", "anio", "semana_epidemiologica"],
+        ).to_frame(index=False)
+        g["municipio"] = g["cod_divipola"].map(TARGET_CODES)
+        g["departamento"] = "NARINO"
+        g["evento_estandar"] = evento
+        g["evento_origen"] = EVENTO_ORIGEN.get(evento, evento)
+        frames.append(g)
+    return pd.concat(frames, ignore_index=True)
+
+
 def main():
     if not SALUD_FILE.exists():
         raise FileNotFoundError(f"No existe: {SALUD_FILE}")
@@ -38,21 +60,14 @@ def main():
     dane["anio"] = pd.to_numeric(dane["anio"], errors="coerce").astype("Int64")
     dane["poblacion"] = pd.to_numeric(dane["poblacion"], errors="coerce")
 
-    # Nos quedamos con EDA, que es la base consistente actual
-    salud = salud[salud["evento_estandar"] == "EDA"].copy()
+    # Incluir EDA e IRA; descartar variantes secundarias (IRA_VIRUS_NUEVO_346, etc.)
+    salud = salud[salud["evento_estandar"].isin(["EDA", "IRA"])].copy()
 
+    eventos = sorted(salud["evento_estandar"].dropna().unique().tolist())
     years = sorted(salud["anio"].dropna().unique().tolist())
     weeks = list(range(1, 53))
 
-    grid = pd.MultiIndex.from_product(
-        [list(TARGET_CODES.keys()), years, weeks],
-        names=["cod_divipola", "anio", "semana_epidemiologica"]
-    ).to_frame(index=False)
-
-    grid["municipio"] = grid["cod_divipola"].map(TARGET_CODES)
-    grid["departamento"] = "NARINO"
-    grid["evento_estandar"] = "EDA"
-    grid["evento_origen"] = "MORBILIDAD POR EDA"
+    grid = build_grid(eventos, years, weeks)
 
     salud_merge = salud[
         [
@@ -93,33 +108,51 @@ def main():
     dataset["tasa_x_100k"] = dataset["tasa_x_100k"].round(4)
 
     dataset = dataset.sort_values(
-        ["cod_divipola", "anio", "semana_epidemiologica"]
+        ["evento_estandar", "cod_divipola", "anio", "semana_epidemiologica"]
     ).reset_index(drop=True)
 
-    dataset.to_csv(
-        FINAL_DIR / "dataset_final_eda_municipio_semana.csv",
-        index=False,
-        encoding="utf-8-sig",
-    )
+    # Salida combinada (IRA + EDA)
+    combined_path = FINAL_DIR / "dataset_final_municipio_semana.csv"
+    dataset.to_csv(combined_path, index=False, encoding="utf-8-sig")
+
+    # Salidas por evento
+    for evento in eventos:
+        subset = dataset[dataset["evento_estandar"] == evento].copy()
+        slug = evento.lower()
+        subset.to_csv(
+            FINAL_DIR / f"dataset_final_{slug}_municipio_semana.csv",
+            index=False,
+            encoding="utf-8-sig",
+        )
 
     resumen = (
-        dataset.groupby(["municipio", "anio"], as_index=False)
+        dataset.groupby(["evento_estandar", "municipio", "anio"], as_index=False)
         .agg(
             casos_totales=("casos", "sum"),
             poblacion=("poblacion", "max"),
             tasa_anual_x_100k=("tasa_x_100k", "sum"),
         )
-        .sort_values(["municipio", "anio"])
+        .sort_values(["evento_estandar", "municipio", "anio"])
     )
     resumen.to_csv(
-        FINAL_DIR / "resumen_final_eda_anual.csv",
+        FINAL_DIR / "resumen_final_anual.csv",
         index=False,
         encoding="utf-8-sig",
     )
 
     print("Archivos generados:")
-    print("-", FINAL_DIR / "dataset_final_eda_municipio_semana.csv")
-    print("-", FINAL_DIR / "resumen_final_eda_anual.csv")
+    print("-", combined_path)
+    for evento in eventos:
+        slug = evento.lower()
+        print("-", FINAL_DIR / f"dataset_final_{slug}_municipio_semana.csv")
+    print("-", FINAL_DIR / "resumen_final_anual.csv")
+
+    print(f"\nEventos: {eventos}")
+    print(f"Total filas: {len(dataset):,}")
+    for evento in eventos:
+        n = (dataset["evento_estandar"] == evento).sum()
+        print(f"  {evento}: {n:,} filas")
+
 
 if __name__ == "__main__":
     main()

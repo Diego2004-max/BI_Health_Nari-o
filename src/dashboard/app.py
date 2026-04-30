@@ -16,20 +16,19 @@ from plotly.subplots import make_subplots
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parents[2]
-DATA_FINAL = BASE_DIR / "data" / "final" / "dataset_final_eda_municipio_semana.csv"
+DATA_FINAL = BASE_DIR / "data" / "final" / "dataset_final_municipio_semana.csv"
 PRED_PATH  = BASE_DIR / "data" / "final" / "predicciones_riesgo.csv"
 MODEL_PATH = BASE_DIR / "src" / "models" / "modelo_riesgo_xgboost.pkl"
 
 st.set_page_config(
     page_title="SentinelaIA Nariño",
-    page_icon="🌋",
+    page_icon="SIA",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 # ─── THEME CONSTANTS ─────────────────────────────────────────────────────────
 COLORES = {"alto": "#C0392B", "medio": "#E67E22", "bajo": "#2ECC71"}
-EMOJI_RIESGO = {"alto": "🔴", "medio": "🟡", "bajo": "🟢"}
 
 COORDS = {
     "PASTO":       (1.2136, -77.2811),
@@ -239,9 +238,7 @@ def apply_volcano_theme(fig, height=400, **extra):
 
 def render_alerta_card(municipio, nivel, tasa, casos):
     colores = {"alto": "#C0392B", "medio": "#E67E22", "bajo": "#2ECC71"}
-    emojis  = {"alto": "🔴",      "medio": "🟡",       "bajo": "🟢"}
     color   = colores.get(nivel, "#888")
-    emoji   = emojis.get(nivel, "⚪")
     rgb     = tuple(int(color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
     rgb_str = f"{rgb[0]},{rgb[1]},{rgb[2]}"
     return f"""
@@ -259,7 +256,7 @@ def render_alerta_card(municipio, nivel, tasa, casos):
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
             <div>
                 <div style="font-size:14px;font-weight:700;color:white;line-height:1.2">
-                    {emoji} {municipio}
+                    {municipio}
                 </div>
                 <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:3px;letter-spacing:0.02em">
                     Tasa: {tasa:.1f} x 100k &nbsp;·&nbsp; {int(casos)} casos
@@ -313,7 +310,7 @@ with st.sidebar:
                 style="width:100%;height:100%;object-fit:cover;filter:saturate(0.6) brightness(0.45)"
             />
             <div style="
-                position:absolute;inset:0;
+                position:absolute;top:0;left:0;right:0;bottom:0;
                 background:linear-gradient(to top, rgba(15,15,15,0.9) 0%, transparent 60%);
                 display:flex;align-items:flex-end;justify-content:center;padding:8px;
             ">
@@ -337,7 +334,7 @@ with st.sidebar:
             margin-top:8px;
             font-size:10px;font-weight:700;
             color:#E67E22;letter-spacing:0.08em;text-transform:uppercase
-        ">🌋 Actividad: Medio</div>
+        ">Actividad: Medio</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -350,17 +347,17 @@ with st.sidebar:
         st.stop()
 
     municipios_disp = ["Todos"] + sorted(df_full["municipio"].unique().tolist())
-    municipio_sel   = st.selectbox("🏙️ Municipio", municipios_disp)
+    municipio_sel   = st.selectbox("Municipio", municipios_disp)
 
     anios_disp = sorted(df_full["anio"].dropna().unique().astype(int).tolist(), reverse=True)
-    anio_sel   = st.selectbox("📅 Año", anios_disp)
+    anio_sel   = st.selectbox("Año", anios_disp)
 
-    evento_sel    = st.selectbox("🦠 Enfermedad", ["IRA + EDA", "IRA", "EDA"])
-    semanas_rango = st.slider("📊 Semanas epidemiológicas", 1, 52, (1, 52))
+    evento_sel    = st.selectbox("Enfermedad", ["IRA + EDA", "IRA", "EDA"])
+    semanas_rango = st.slider("Semanas epidemiológicas", 1, 52, (1, 52))
 
     st.markdown('<div style="border-top:1px solid rgba(255,255,255,0.08);margin:16px 0"></div>', unsafe_allow_html=True)
 
-    if st.button("🔄 Actualizar datos", use_container_width=True, type="primary"):
+    if st.button("Actualizar datos", use_container_width=True, type="primary"):
         with st.spinner("Ejecutando pipeline ETL..."):
             for script in [
                 "src/etl/download_data.py",
@@ -373,10 +370,10 @@ with st.sidebar:
                     capture_output=True, text=True
                 )
         st.cache_data.clear()
-        st.success("✅ Datos actualizados")
+        st.success("Datos actualizados")
         st.rerun()
 
-    if st.button("🤖 Re-entrenar modelo", use_container_width=True):
+    if st.button("Re-entrenar modelo", use_container_width=True):
         with st.spinner("Entrenando XGBoost..."):
             r = subprocess.run(
                 ["python", "src/models/modelo_xgboost.py"],
@@ -384,7 +381,7 @@ with st.sidebar:
             )
         if r.returncode == 0:
             st.cache_data.clear()
-            st.success("✅ Modelo re-entrenado")
+            st.success("Modelo re-entrenado")
             st.rerun()
         else:
             st.error(r.stderr[-500:] if r.stderr else "Error desconocido")
@@ -394,24 +391,6 @@ with st.sidebar:
     st.caption("Concurso Datos al Ecosistema 2026 — MinTIC")
 
 # ─── HERO SECTION ────────────────────────────────────────────────────────────
-
-import random as _rnd
-_rnd.seed(42)
-_particles_html = ""
-for _i in range(25):
-    _sz  = round(_rnd.uniform(2, 5), 1)
-    _lft = round(_rnd.uniform(2, 98), 1)
-    _dly = round(_rnd.uniform(0, 5), 1)
-    _dur = round(_rnd.uniform(8, 18), 1)
-    _alp = round(_rnd.uniform(0.1, 0.45), 2)
-    _col = f"rgba(230,126,34,{_alp})" if _i % 2 == 0 else f"rgba(192,57,43,{_alp})"
-    _blr = round(_rnd.uniform(0, 1.2), 1)
-    _particles_html += (
-        f'<div style="position:absolute;width:{_sz}px;height:{_sz}px;'
-        f'background:{_col};border-radius:50%;left:{_lft}%;bottom:-10px;'
-        f'animation:float-particle {_dur}s linear {_dly}s infinite;'
-        f'filter:blur({_blr}px)"></div>'
-    )
 
 st.markdown(f"""
 <div style="
@@ -444,11 +423,6 @@ st.markdown(f"""
             rgba(10,10,10,0.85) 100%);
     "></div>
 
-    <!-- Partículas de ceniza / lava (CSS-only, generadas en Python) -->
-    <div style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;overflow:hidden">
-        {_particles_html}
-    </div>
-
     <!-- Contenido principal -->
     <div style="
         position: relative; z-index: 2;
@@ -475,7 +449,7 @@ st.markdown(f"""
                 animation:pulse-ring 1.8s ease-out infinite;
             "></span>
             <span style="color:#E67E22;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase">
-                🌋 Volcán Galeras &nbsp;·&nbsp; Nivel de Actividad: MEDIO
+                Volcán Galeras &nbsp;·&nbsp; Nivel de Actividad: MEDIO
             </span>
         </div>
 
@@ -567,26 +541,26 @@ st.markdown('<div style="height:28px"></div>', unsafe_allow_html=True)
 
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.metric("🦠 Total casos", f"{total_casos:,}", delta=delta_casos, delta_color="inverse")
+    st.metric("Total casos", f"{total_casos:,}", delta=delta_casos, delta_color="inverse")
 with col2:
-    st.metric("📊 Tasa x 100k hab.", f"{tasa_prom:.1f}")
+    st.metric("Tasa x 100k hab.", f"{tasa_prom:.1f}")
 with col3:
-    st.metric("📅 Semanas con casos", semanas_con_datos)
+    st.metric("Semanas con casos", semanas_con_datos)
 with col4:
     so2_txt  = f"{so2_prom:.0f} t/día" if so2_prom > 0 else "Sin dato"
-    nivel_so2 = "🔴 Alto" if so2_prom > 700 else ("🟡 Medio" if so2_prom > 400 else "🟢 Normal")
-    st.metric("🌋 SO₂ Galeras", so2_txt, delta=nivel_so2, delta_color="off")
+    nivel_so2 = "Alto" if so2_prom > 700 else ("Medio" if so2_prom > 400 else "Normal")
+    st.metric("SO₂ Galeras", so2_txt, delta=nivel_so2, delta_color="off")
 
 st.markdown('<div style="border-top:1px solid rgba(255,255,255,0.07);margin:20px 0 16px"></div>', unsafe_allow_html=True)
 
 # ─── TABS ────────────────────────────────────────────────────────────────────
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "🗺️ Mapa de Riesgo",
-    "📈 Canal Endémico",
-    "📊 Comparativo Municipal",
-    "🌋 Galeras + SO₂",
-    "🤖 Predicciones IA",
+    "Mapa de Riesgo",
+    "Canal Endémico",
+    "Comparativo Municipal",
+    "Galeras + SO₂",
+    "Predicciones IA",
 ])
 
 # ════════ TAB 1 — MAPA ═══════════════════════════════════════════════════════
@@ -625,7 +599,7 @@ with tab1:
                 lat=[1.2217], lon=[-77.3597],
                 mode="markers+text",
                 marker=dict(size=16, color="#E67E22", symbol="triangle"),
-                text=["🌋 Galeras"], textposition="top right",
+                text=["Galeras"], textposition="top right",
                 name="Volcán Galeras",
                 hovertext="Volcán Galeras (4.276 m)",
             ))
@@ -731,7 +705,7 @@ with tab2:
 
     semanas_alerta = len(alerta_alta) if not alerta_alta.empty else 0
     if semanas_alerta > 0:
-        st.warning(f"⚠ {semanas_alerta} semana(s) superaron el corredor histórico en {anio_sel}")
+        st.warning(f"{semanas_alerta} semana(s) superaron el corredor histórico en {anio_sel}")
 
 # ════════ TAB 3 — COMPARATIVO MUNICIPAL ══════════════════════════════════════
 with tab3:
@@ -794,7 +768,7 @@ with tab3:
 
 # ════════ TAB 4 — GALERAS SO₂ ════════════════════════════════════════════════
 with tab4:
-    section_header("🌋 Volcán Galeras — Emisiones SO₂ vs Casos de enfermedad")
+    section_header("Volcán Galeras — Emisiones SO₂ vs Casos de enfermedad")
 
     # Foto del volcán con glassmorphism
     st.markdown(f"""
@@ -818,7 +792,7 @@ with tab4:
         ">
             <div>
                 <div style="color:rgba(255,255,255,0.45);font-size:10px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:4px">
-                    🌋 Volcán Galeras · 4.276 msnm · Urcunina - Montaña de Fuego
+                    Volcán Galeras · 4.276 msnm · Urcunina - Montaña de Fuego
                 </div>
                 <div style="color:white;font-size:19px;font-weight:800;letter-spacing:-0.01em">
                     El volcán más activo de Colombia
@@ -880,7 +854,7 @@ with tab4:
 
         corr = df_g["casos"].corr(df_g["so2"])
         if abs(corr) > 0.3:
-            st.info(f"📊 Correlación Pearson SO₂-Casos: **{corr:.3f}** — relación "
+            st.info(f"Correlación Pearson SO₂-Casos: **{corr:.3f}** — relación "
                     f"{'positiva' if corr > 0 else 'negativa'} "
                     f"{'moderada' if abs(corr) < 0.6 else 'fuerte'}")
 
@@ -900,13 +874,13 @@ with tab4:
 
 # ════════ TAB 5 — PREDICCIONES ═══════════════════════════════════════════════
 with tab5:
-    section_header("🤖 Predicciones XGBoost — Nivel de riesgo epidemiológico")
+    section_header("Predicciones XGBoost — Nivel de riesgo epidemiológico")
 
     df_pred = cargar_predicciones()
 
     if df_pred.empty:
-        st.warning("⚠ Sin predicciones. El modelo no ha sido entrenado aún.")
-        if st.button("🚀 Entrenar modelo ahora", type="primary"):
+        st.warning("Sin predicciones. El modelo no ha sido entrenado aún.")
+        if st.button("Entrenar modelo ahora", type="primary"):
             with st.spinner("Entrenando XGBoost..."):
                 r = subprocess.run(
                     ["python", "src/models/modelo_xgboost.py"],
@@ -914,7 +888,7 @@ with tab5:
                 )
             if r.returncode == 0:
                 st.cache_data.clear()
-                st.success("✅ Modelo entrenado")
+                st.success("Modelo entrenado")
                 st.rerun()
             else:
                 st.error(r.stderr[-600:])
@@ -1025,7 +999,6 @@ st.markdown("""
         border-radius:999px;
         padding:8px 24px;
     ">
-        <span style="font-size:16px">🌋</span>
         <span style="color:rgba(255,255,255,0.35);font-size:12px;letter-spacing:0.04em">
             SentinelaIA Nariño
             &nbsp;·&nbsp;

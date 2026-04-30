@@ -1,3 +1,6 @@
+import sys
+sys.stdout.reconfigure(encoding="utf-8")
+
 from pathlib import Path
 import pandas as pd
 import unicodedata
@@ -5,6 +8,7 @@ import re
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 RAW_FILE = BASE_DIR / "data" / "raw" / "dane" / "poblacion_municipal.xlsx"
+RAW_FILE_CSV = BASE_DIR / "data" / "raw" / "dane" / "poblacion_api.csv"
 OUT_DIR = BASE_DIR / "data" / "processed"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -35,8 +39,22 @@ def clean_text(value):
     return value.upper()
 
 def main():
+    # Use pre-built API CSV directly when the DANE xlsx is not available
+    if not RAW_FILE.exists() and RAW_FILE_CSV.exists():
+        print(f"[INFO] poblacion_municipal.xlsx no encontrado — usando {RAW_FILE_CSV.name}")
+        dane_final = pd.read_csv(RAW_FILE_CSV, dtype={"cod_divipola": str})
+        dane_final["cod_divipola"] = dane_final["cod_divipola"].str.zfill(5)
+        dane_final["municipio"] = dane_final["cod_divipola"].map(TARGET_CODES).fillna(dane_final["municipio"])
+        dane_final["departamento"] = "NARINO"
+        dane_final = dane_final[dane_final["anio"].isin(TARGET_YEARS)].copy()
+        dane_final = dane_final[["cod_divipola", "municipio", "departamento", "anio", "poblacion"]]
+        dane_final = dane_final.sort_values(["cod_divipola", "anio"]).reset_index(drop=True)
+        dane_final.to_csv(OUT_DIR / "dane_poblacion_2023_2025_galeras.csv", index=False, encoding="utf-8-sig")
+        print(f"    OK → {OUT_DIR / 'dane_poblacion_2023_2025_galeras.csv'}")
+        return
+
     if not RAW_FILE.exists():
-        raise FileNotFoundError(f"No existe el archivo: {RAW_FILE}")
+        raise FileNotFoundError(f"No existe el archivo: {RAW_FILE}\nNi el fallback: {RAW_FILE_CSV}")
 
     df = pd.read_excel(RAW_FILE, sheet_name="PobMunicipalxÁrea", header=7)
     df.columns = [normalize_text(c) for c in df.columns]
