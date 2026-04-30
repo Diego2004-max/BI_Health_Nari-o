@@ -19,7 +19,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-DATA_PATH = BASE_DIR / "data" / "final" / "dataset_final_eda_municipio_semana.csv"
+DATA_PATH = BASE_DIR / "data" / "final" / "dataset_final_municipio_semana.csv"
 MODEL_DIR = BASE_DIR / "src" / "models"
 OUTPUT_CSV = BASE_DIR / "data" / "final" / "predicciones_riesgo.csv"
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
