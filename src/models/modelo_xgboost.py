@@ -116,8 +116,8 @@ joblib.dump(le, MODEL_DIR / "label_encoder.pkl")
 joblib.dump(features_todas, MODEL_DIR / "features.pkl")
 print(f"\n[7] Modelo guardado en {MODEL_DIR.name}")
 
-# Predicciones sobre todo el dataset
-print("\n[8] Generando predicciones...")
+# Predicciones sobre todo el dataset histórico
+print("\n[8] Generando predicciones históricas...")
 X_all = df[features_todas].fillna(0)
 pred_labels = le.inverse_transform(model.predict(X_all))
 max_proba = (
@@ -135,9 +135,73 @@ pred_df = pd.DataFrame({
     "nivel_riesgo_predicho": pred_labels,
     "probabilidad": max_proba.round(3),
 })
+
+# ── Predicciones futuras: 2025 y 2026 ──────────────────────────────────────
+print("\n[9] Generando predicciones futuras (2025-2026)...")
+
+ANOS_FUTUROS = [2025, 2026]
+SEMANAS = list(range(1, 53))
+
+# Referencia por municipio + evento: promedios de los últimos 2 años disponibles
+anio_max = df["anio"].max()
+df_ref = df[df["anio"] >= anio_max - 1].copy()
+ref = (
+    df_ref.groupby(["municipio", "cod_divipola", "evento_estandar"])
+    .agg(
+        tasa_ref=("tasa_x_100k", "mean"),
+        pob_ref=("poblacion", "last"),
+        so2_ref=("so2_flux_ton_dia", "mean") if "so2_flux_ton_dia" in df.columns else ("poblacion", "last"),
+    )
+    .reset_index()
+)
+
+filas_futuras = []
+for anio in ANOS_FUTUROS:
+    for semana in SEMANAS:
+        for _, r in ref.iterrows():
+            fila = {
+                "cod_divipola": r["cod_divipola"],
+                "municipio": r["municipio"],
+                "semana_epidemiologica": semana,
+                "anio": anio,
+                "evento_estandar": r["evento_estandar"],
+                "poblacion": r["pob_ref"],
+                "tasa_x_100k": r["tasa_ref"],
+            }
+            if "so2_flux_ton_dia" in features_todas:
+                fila["so2_flux_ton_dia"] = r.get("so2_ref", 0)
+            filas_futuras.append(fila)
+
+df_fut = pd.DataFrame(filas_futuras)
+df_fut["semana_sin"] = np.sin(2 * np.pi * df_fut["semana_epidemiologica"] / 52)
+df_fut["semana_cos"] = np.cos(2 * np.pi * df_fut["semana_epidemiologica"] / 52)
+df_fut["evento_bin"] = (df_fut["evento_estandar"] == "IRA").astype(int)
+
+X_fut = df_fut[features_todas].fillna(0)
+fut_labels = le.inverse_transform(model.predict(X_fut))
+fut_proba = (
+    model.predict_proba(X_fut).max(axis=1)
+    if hasattr(model, "predict_proba")
+    else np.ones(len(df_fut)) * 0.75
+)
+
+pred_fut_df = pd.DataFrame({
+    "cod_divipola": df_fut["cod_divipola"].values,
+    "municipio": df_fut["municipio"].values,
+    "semana_epidemiologica": df_fut["semana_epidemiologica"].values,
+    "anio": df_fut["anio"].values,
+    "evento_estandar": df_fut["evento_estandar"].values,
+    "nivel_riesgo_predicho": fut_labels,
+    "probabilidad": fut_proba.round(3),
+})
+print(f"    OK {len(pred_fut_df):,} predicciones futuras generadas")
+
+# ── Combinar histórico + futuro ──────────────────────────────────────────────
+pred_df = pd.concat([pred_df, pred_fut_df], ignore_index=True)
 pred_df.to_csv(OUTPUT_CSV, index=False)
-print(f"    OK {len(pred_df):,} predicciones guardadas en {OUTPUT_CSV.name}")
-print(f"    Distribucion:\n{pred_df['nivel_riesgo_predicho'].value_counts()}")
+print(f"\n[10] Total guardado: {len(pred_df):,} predicciones en {OUTPUT_CSV.name}")
+print(f"     Años: {sorted(pred_df['anio'].unique().tolist())}")
+print(f"     Distribución nivel:\n{pred_df['nivel_riesgo_predicho'].value_counts()}")
 
 print("\n" + "=" * 60)
 print("  Pipeline completado OK")
