@@ -27,8 +27,14 @@ data/processed/*
 
 data/final/*
 !data/final/.gitkeep
+!data/final/dataset_final_municipio_semana.csv
+!data/final/dataset_final_eda_municipio_semana.csv
+!data/final/predicciones_riesgo.csv
 
 # Temporales
 *.log
 *.tmp
 *.part
+
+# Vercel
+.vercel/
